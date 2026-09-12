@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESTÜ Ders Programı Hazırlama Otomasyonu</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- SheetJS for client-side Excel export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- html2canvas for client-side PNG export -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+</head>
+<body>
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <div class="app-container">
+    <!-- Sidebar / Pancake Navigation -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <img src="estu_emblem_clean.svg" width="34" height="34" alt="ESTÜ Logo" style="flex-shrink: 0; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));">
+        <div>
+          <div class="brand-title">ESTÜ</div>
+          <div class="brand-subtitle">Ders Programı Otomasyonu</div>
+        </div>
+      </div>
+
+      <ul class="sidebar-menu">
+        <li>
+          <a class="menu-item active" data-view="generator">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            Ders Programı
+          </a>
+        </li>
+        <li>
+          <a class="menu-item" data-view="manual">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+            Manuel Mod
+          </a>
+        </li>
+        <li>
+          <a class="menu-item" data-view="settings">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            Ayarlar
+          </a>
+        </li>
+        <li>
+          <a class="menu-item" data-view="help">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            Yardım
+          </a>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <span>v1.3</span>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="main-wrapper">
+      <header class="top-bar">
+        <div class="top-left">
+          <button class="menu-toggle-btn" id="menuToggleBtn" title="Menüyü Aç/Kapat">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          </button>
+          <h1 class="page-title" id="currentViewTitle">Ders Programı Hazırlama</h1>
+        </div>
+        <div class="top-right">
+          <button class="btn btn-secondary btn-sm" id="quickThemeBtn" title="Temayı Değiştir">
+            Tema
+          </button>
+        </div>
+      </header>
+
+      <main class="content-area">
+        <!-- VIEW 1: DERS PROGRAMI OLUŞTURUCU -->
+        <section class="view-section active" id="view-generator">
+          <!-- 0. Ders Programı Dosyası -->
+          <div class="card">
+            <div class="card-title">Ders Programı PDF Yükleme</div>
+            <div style="display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+              <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <label for="pdfFileInput" class="btn btn-outline btn-sm" style="cursor: pointer; margin-bottom: 0;">
+                  PDF Dosyası Seç
+                </label>
+                <input type="file" id="pdfFileInput" accept=".pdf" style="display: none;" onchange="handlePdfUpload(event)">
+                <span id="pdfFileStatus" style="font-size: 13px; color: var(--text-muted); font-weight: 500;">
+                  Aktif: 2026-2027 Güz Dönemi (Yüklü)
+                </span>
+              </div>
+              <div style="font-size: 12px; color: var(--primary); font-weight: 600;">
+                Yalnızca ESTÜ ders programları geçerlidir.
+              </div>
+            </div>
+          </div>
+
+          <!-- Bölüm Seçimi -->
+          <div class="card">
+            <div class="card-title">1. Bölüm ve Program Seçimi</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label" for="deptSelect">Bölümünüz</label>
+                <select class="form-control" id="deptSelect">
+                  <option value="">Bölüm Seçiniz...</option>
+                </select>
+              </div>
+              <div class="form-group" style="justify-content: flex-end;">
+                <label class="checkbox-group" style="padding-bottom: 8px;">
+                  <input type="checkbox" id="includeElectivesCheck" checked>
+                  Rektörlük ve Ortak Seçmeli Dersleri Listede Göster
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Ders Seçim Modu -->
+          <div class="card">
+            <div class="tabs">
+              <button class="tab-btn active" id="tabManualSelection" onclick="switchCourseSelectionMode('manual')">
+                Tek Tek Ders Seçimi
+              </button>
+              <button class="tab-btn" id="tabAutoSelection" onclick="switchCourseSelectionMode('auto')">
+                Otomatik Ders Seçimi (Geçilen Dersler ve Kredi Hedefli)
+              </button>
+            </div>
+
+            <!-- Otomatik Seçim Bilgilendirme ve Kredi Hedefi -->
+            <div id="autoSelectionPanel" style="display: none; margin-bottom: 20px;">
+              <div class="card-subtitle">
+                Aşağıdaki listeden daha önce aldığınız ve <strong>geçtiğiniz dersleri işaretleyin</strong>. Algoritma kalan dersler arasından belirlediğiniz kredi aralığına uygun en verimli programı planlar.
+              </div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="form-label" for="minTargetCredits">Minimum Hedef Kredi (AKTS)</label>
+                  <input type="number" class="form-control" id="minTargetCredits" value="25" min="10" max="45" step="1">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="maxTargetCredits">Maksimum Hedef Kredi (AKTS)</label>
+                  <input type="number" class="form-control" id="maxTargetCredits" value="35" min="15" max="50" step="1">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="minElectiveCredits">Alınacak Min. Seçmeli Ders Kredisi</label>
+                  <input type="number" class="form-control" id="minElectiveCredits" value="0" min="0" max="20" step="1">
+                </div>
+              </div>
+            </div>
+
+            <div class="card-title" id="courseListHeader">
+              <span>Ders Listesi</span>
+              <span style="font-size: 12px; font-weight: normal; color: var(--text-muted);" id="selectedCoursesCount">0 ders seçildi</span>
+            </div>
+
+            <!-- Derslerin Listelendiği Akordeon / Konteyner -->
+            <div id="courseCatalogContainer">
+              <div style="color: var(--text-muted); font-size: 13.5px; padding: 20px; text-align: center;">
+                Lütfen yukarıdan bir bölüm seçiniz.
+              </div>
+            </div>
+          </div>
+
+          <!-- Kriterler Paneli -->
+          <div class="card">
+            <div class="card-title">2. Kriterler ve Verimlilik Tercihleri</div>
+            <div class="criteria-container">
+              <!-- 1. Bölüm: Haftalık Gün Tercihi -->
+              <div class="criteria-section">
+                <div class="criteria-section-title">
+                  <span>Ders Olmasını İstediğiniz Günler</span>
+                </div>
+                <div class="day-pills-row">
+                  <div class="day-pill selected" data-day="Pzt" onclick="toggleDayPill(this)">Pazartesi</div>
+                  <div class="day-pill selected" data-day="Sal" onclick="toggleDayPill(this)">Salı</div>
+                  <div class="day-pill selected" data-day="Crs" onclick="toggleDayPill(this)">Çarşamba</div>
+                  <div class="day-pill selected" data-day="Prs" onclick="toggleDayPill(this)">Perşembe</div>
+                  <div class="day-pill selected" data-day="Cum" onclick="toggleDayPill(this)">Cuma</div>
+                </div>
+                <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 8px;">
+                  Seçili günlerde ders planlanır. Seçilmeyen günler programda tamamen boş bırakılır.
+                </div>
+              </div>
+
+              <!-- 2. Bölüm: Zaman ve Aralık Kriterleri (3 Sütun) -->
+              <div class="criteria-row-grid">
+                <!-- Öğle Arası -->
+                <div class="criteria-section">
+                  <div class="criteria-section-title">Öğle Arası Esnekliği</div>
+                  <label class="checkbox-group" style="margin-bottom: 8px;">
+                    <input type="checkbox" id="critLunchBreak" checked>
+                    11:30 - 14:00 arası yemek molası
+                  </label>
+                  <select class="form-control" id="critLunchDuration">
+                    <option value="0.5" selected>En az 30 dakika boşluk</option>
+                    <option value="1.0">En az 1 saat boşluk</option>
+                    <option value="1.5">En az 1.5 saat boşluk</option>
+                  </select>
+                  <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
+                    11:30-14:00 arasında kesintisiz dinlenme payı ayrılır.
+                  </div>
+                </div>
+
+                <!-- Gün İçi Saat Sınırları -->
+                <div class="criteria-section">
+                  <div class="criteria-section-title">Gün İçi Saat Sınırları</div>
+                  <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+                    <div style="flex: 1;">
+                      <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 2px;">En Erken Başlangıç</label>
+                      <input type="number" class="form-control" id="critEarliestStart" value="8" min="8" max="18">
+                    </div>
+                    <span style="font-size: 12px; margin-top: 14px;">-</span>
+                    <div style="flex: 1;">
+                      <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 2px;">En Geç Bitiş</label>
+                      <input type="number" class="form-control" id="critLatestEnd" value="20" min="10" max="22">
+                    </div>
+                  </div>
+                  <div style="font-size: 11px; color: var(--text-muted);">
+                    Derslerin bu saat aralığı içinde kalması sağlanır.
+                  </div>
+                </div>
+
+                <!-- Dersler Arası Boşluk -->
+                <div class="criteria-section">
+                  <div class="criteria-section-title">Dersler Arası Maksimum Boşluk</div>
+                  <select class="form-control" id="critMaxGap" style="margin-top: 4px;">
+                    <option value="none" selected>Sınırlama Yok (En verimliye göre sırala)</option>
+                    <option value="1.0">Maksimum 1 Saat Boşluk</option>
+                    <option value="2.0">Maksimum 2 Saat Boşluk</option>
+                    <option value="3.0">Maksimum 3 Saat Boşluk</option>
+                  </select>
+                  <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
+                    Aynı gündeki ders blokları arasındaki bekleme süresini sınırlar.
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3. Bölüm: Özel Kriterli Gruplar -->
+              <div class="special-flags-box">
+                <div class="criteria-section-title" style="color: var(--primary); margin-bottom: 4px;">
+                  Özel Kriterli Gruplar (Varsayılan: Kapalı)
+                </div>
+                <div style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 8px;">
+                  Bölüm tarafından belirli koşullarla açılan şubelerdir. Kontenjan dolması şartıyla açılan gruplarda <strong>C grubu, D grubuna göre önceliklendirilir</strong>.
+                </div>
+                <div class="special-flags-grid">
+                  <label class="checkbox-group">
+                    <input type="checkbox" id="critStar1">
+                    <span><strong>[*]</strong> Kontenjan dolunca açılan şubeler (C ve D grupları)</span>
+                  </label>
+                  <label class="checkbox-group">
+                    <input type="checkbox" id="critStar2">
+                    <span><strong>[**]</strong> %30 İngilizce şartıyla açılan şubeler</span>
+                  </label>
+                  <label class="checkbox-group">
+                    <input type="checkbox" id="critStar3">
+                    <span><strong>[***]</strong> Erasmus öğrencisi şartıyla açılan şubeler</span>
+                  </label>
+                  <label class="checkbox-group">
+                    <input type="checkbox" id="critBrackets">
+                    <span><strong>[a], [b]</strong> Özel koşullu şubeler (Lab/Uygulama eşleşmeleri)</span>
+                  </label>
+                </div>
+              </div>
+
+              <div style="display: flex; justify-content: flex-end; margin-top: 6px;">
+                <button class="btn btn-primary" id="btnGenerateSchedule" onclick="handleGenerateSchedule()" style="padding: 11px 28px; font-size: 14px;">
+                  Ders Programı Oluştur
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sonuçlar ve Takvim Görünümü -->
+          <div class="card" id="resultsCard" style="display: none;">
+            <div class="results-header">
+              <div>
+                <div class="card-title" style="margin-bottom: 4px;">Oluşturulan Ders Programları</div>
+                <div class="schedule-metrics-summary" id="scheduleMetricsSummary">
+                  <!-- Metrics injected via JS -->
+                </div>
+              </div>
+
+              <div class="schedule-nav">
+                <button class="btn btn-secondary btn-sm" id="btnPrevSchedule" onclick="prevSchedule()">&larr; Önceki</button>
+                <span id="scheduleIndexText" style="font-size: 13px; font-weight: 600;">1 / 1</span>
+                <button class="btn btn-secondary btn-sm" id="btnNextSchedule" onclick="nextSchedule()">Sonraki &rarr;</button>
+              </div>
+            </div>
+
+            <!-- Çıktı Butonları -->
+            <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;" class="export-bar">
+              <button class="btn btn-outline btn-sm" onclick="exportScheduleImage()">
+                Görsel Olarak İndir (PNG)
+              </button>
+              <button class="btn btn-outline btn-sm" onclick="exportScheduleExcel()">
+                Excel Çıktısı Al (.xlsx)
+              </button>
+              <button class="btn btn-outline btn-sm" onclick="exportSchedulePDF()">
+                PDF / Yazdır
+              </button>
+            </div>
+
+            <!-- Dışa Aktarma ve Yazdırma Kapsayıcısı (PNG ve PDF için tek parça) -->
+            <div id="scheduleExportArea" class="schedule-export-area">
+              <!-- Yazdırma Başlığı (Sadece Print modunda görünür) -->
+              <div class="print-header">
+                <h2>Eskişehir Teknik Üniversitesi</h2>
+                <h3>Haftalık Ders Programı Çizelgesi</h3>
+                <p id="printSubtitle"></p>
+              </div>
+
+              <!-- Haftalık Takvim Tablosu -->
+              <div class="timetable-container" id="timetableContainer">
+                <table class="timetable-table" id="timetableGrid">
+                  <thead>
+                    <tr>
+                      <th class="time-col">Saat</th>
+                      <th>Pazartesi</th>
+                      <th>Salı</th>
+                      <th>Çarşamba</th>
+                      <th>Perşembe</th>
+                      <th>Cuma</th>
+                    </tr>
+                  </thead>
+                  <tbody id="timetableBody">
+                    <!-- Time slots generated by JS (08:00 - 20:00) -->
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Programdaki Derslerin Detay Listesi -->
+              <div class="schedule-details-export" style="margin-top: 24px;">
+                <h4 style="font-size: 14px; margin-bottom: 8px; font-weight: 700;">Programda Yer Alan Gruplar ve Derslikler</h4>
+                <div class="table-responsive">
+                  <table class="data-table" id="scheduleCoursesListTable">
+                    <thead>
+                      <tr>
+                        <th>Ders Kodu</th>
+                        <th>Ders Adı</th>
+                        <th>Grup</th>
+                        <th>Gün ve Saatler</th>
+                        <th>Derslik</th>
+                        <th>Öğretim Elemanı</th>
+                        <th>Kredi</th>
+                      </tr>
+                    </thead>
+                    <tbody id="scheduleCoursesListBody">
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 2: MANUEL MOD -->
+        <section class="view-section" id="view-manual">
+          <div class="card">
+            <div class="card-title">Manuel Ders Ekleme</div>
+            <div class="card-subtitle">
+              Sisteme PDF dışında elinizdeki dersleri, grupları, gün ve saat bilgilerini ekleyebilir ve program oluşturabilirsiniz. Girdiğiniz dersler tarayıcınızın yerel hafızasında saklanır.
+            </div>
+
+            <form id="manualCourseForm" onsubmit="handleManualAddCourse(event)">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="form-label" for="mCode">Ders Kodu *</label>
+                  <input type="text" class="form-control" id="mCode" placeholder="Ör: HEE4007" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="mName">Ders Adı *</label>
+                  <input type="text" class="form-control" id="mName" placeholder="Ör: Uçak Gösterge Sistemleri I" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="mGroup">Grup</label>
+                  <input type="text" class="form-control" id="mGroup" placeholder="Ör: A" value="A">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="mType">Zorunlu / Seçmeli</label>
+                  <select class="form-control" id="mType">
+                    <option value="Zorunlu">Zorunlu</option>
+                    <option value="Seçmeli">Seçmeli</option>
+                    <option value="Mes.Seç.">Mesleki Seçmeli</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="mCredits">Kredi (AKTS)</label>
+                  <input type="number" class="form-control" id="mCredits" value="3.0" step="0.5">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="mClassroom">Derslik</label>
+                  <input type="text" class="form-control" id="mClassroom" placeholder="Ör: A1 / Hidrolik Lab">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="mInstructor">Öğretim Elemanı</label>
+                  <input type="text" class="form-control" id="mInstructor" placeholder="Ör: Dr. Öğr. Üyesi ...">
+                </div>
+              </div>
+
+              <!-- Gün ve Saat Girişi -->
+              <div style="margin-top: 16px; padding: 12px; background-color: var(--border-subtle); border-radius: var(--radius-md);">
+                <label class="form-label" style="margin-bottom: 8px;">Dersin Gün ve Saat Aralığı</label>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                  <select class="form-control" id="mDay" style="width: 140px;">
+                    <option value="Pzt">Pazartesi</option>
+                    <option value="Sal">Salı</option>
+                    <option value="Crs">Çarşamba</option>
+                    <option value="Prs">Perşembe</option>
+                    <option value="Cum">Cuma</option>
+                  </select>
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 12.5px;">Başlangıç:</span>
+                    <input type="number" class="form-control" id="mStartHour" value="9" min="8" max="19" style="width: 65px;">
+                    <span style="font-size: 12.5px;">:00</span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 12.5px;">Bitiş:</span>
+                    <input type="number" class="form-control" id="mEndHour" value="12" min="9" max="20" style="width: 65px;">
+                    <span style="font-size: 12.5px;">:00</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+                <button type="submit" class="btn btn-primary">Dersi Listeye Ekle</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="card">
+            <div class="card-title">
+              <span>Manuel Ders Listesi (<span id="manualCoursesCount">0</span>)</span>
+              <div style="display: flex; gap: 8px;">
+                <button class="btn btn-secondary btn-sm" onclick="exportManualCoursesJSON()">JSON İndir</button>
+                <button class="btn btn-secondary btn-sm" onclick="document.getElementById('manualJSONFileInput').click()">JSON Yükle</button>
+                <input type="file" id="manualJSONFileInput" accept=".json" style="display: none;" onchange="importManualCoursesJSON(event)">
+                <button class="btn btn-danger btn-sm" onclick="clearManualCourses()">Tümünü Sil</button>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table" id="manualCoursesTable">
+                <thead>
+                  <tr>
+                    <th>Ders Kodu</th>
+                    <th>Ders Adı</th>
+                    <th>Grup</th>
+                    <th>Türü</th>
+                    <th>Kredi</th>
+                    <th>Gün / Saat</th>
+                    <th>Derslik</th>
+                    <th>İşlem</th>
+                  </tr>
+                </thead>
+                <tbody id="manualCoursesBody">
+                  <!-- Injected via JS -->
+                </tbody>
+              </table>
+            </div>
+
+            <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+              <button class="btn btn-primary" onclick="generateFromManualCourses()">Bu Derslerle Program Oluştur</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 3: AYARLAR -->
+        <section class="view-section" id="view-settings">
+          <div class="card">
+            <div class="card-title">Görünüm ve Tema Ayarları</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label" for="themeSelect">Arayüz Teması</label>
+                <select class="form-control" id="themeSelect" onchange="changeTheme(this.value)">
+                  <option value="light">Açık Tema (Kurumsal ESTÜ)</option>
+                  <option value="dark">Koyu Tema (Dark Mode)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="fontSizeSelect">Yazı Boyutu</label>
+                <select class="form-control" id="fontSizeSelect" onchange="changeFontSize(this.value)">
+                  <option value="normal">Normal (14px)</option>
+                  <option value="large">Büyük (16px)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Veri ve Hafıza Yönetimi</div>
+            <div class="card-subtitle">
+              Uygulama tercihlerinizi, manuel girdiğiniz dersleri ve seçilen kriterleri tarayıcınızın yerel hafızasında (localStorage) saklar.
+            </div>
+            <button class="btn btn-danger" onclick="resetAllData()">Tüm Yerel Verileri ve Tercihleri Sıfırla</button>
+          </div>
+        </section>
+
+        <!-- VIEW 4: YARDIM VE REHBER -->
+        <section class="view-section" id="view-help">
+          <div class="card">
+            <div class="card-title">Kullanım Rehberi ve Kriter Açıklamaları</div>
+
+            <div class="help-section">
+              <h3 class="help-title">1. Bölüm ve Ders Seçimi</h3>
+              <p class="help-text">
+                Programı kullanmaya başlarken ilk olarak bölümünüzü (örneğin HEE, UGMB, HY, HTK, PLT) seçiniz. Seçtiğiniz bölüme ait tüm güz yarıyılları (1., 3., 5. ve 7. Yarıyıllar) akordeon sekmeler halinde listelenir.
+              </p>
+            </div>
+
+            <div class="help-section">
+              <h3 class="help-title">2. Tek Tek ve Otomatik Ders Seçim Modları</h3>
+              <p class="help-text">
+                <strong>Tek Tek Seçim:</strong> İlgili yarıyılları açarak almak istediğiniz derslerin onay kutularını işaretleyebilirsiniz.<br>
+                <strong>Otomatik Seçim:</strong> Daha önce alıp geçtiğiniz dersleri işaretlersiniz. Sistem kalan ders havuzundan belirleyeceğiniz minimum ve maksimum hedef krediye göre en uygun kombinasyonları otomatik belirler.
+              </p>
+            </div>
+
+            <div class="help-section">
+              <h3 class="help-title">3. Özel Şartlı Gruplar ([*], [**], [***], [a], [b]) ve C Grubu Önceliği</h3>
+              <p class="help-text">
+                Ders programında bazı şubelerin yanında yer alan özel işaretler, o şubenin hangi şartlar altında açılacağını veya kimler için planlandığını ifade eder:
+              </p>
+              <ul style="margin-left: 20px; font-size: 13.5px; line-height: 1.6; margin-bottom: 12px; color: var(--text-main);">
+                <li>
+                  <strong><code>[*]</code> Kontenjan Dolması Şartı:</strong> Bölümün standart A ve B gruplarının kontenjanı dolduğunda sırayla açılacak ek şubelerdir. Resmi açılma sırasına göre <strong>önce C grubu, ardından D grubu</strong> açıldığı için algoritmamız C grubunu D grubuna göre önceliklendirir.
+                </li>
+                <li>
+                  <strong><code>[**]</code> Eğitim Dili Şartı:</strong> Yalnızca eğitim dili %30 İngilizce olan programa tabi öğrenciler bulunması durumunda açılacak şubelerdir.
+                </li>
+                <li>
+                  <strong><code>[***]</code> Erasmus Şartı:</strong> Bölümde ilgili dönemde kayıtlı yabancı uyruklu Erasmus öğrencisi bulunması halinde açılacak şubelerdir.
+                </li>
+                <li>
+                  <strong><code>[a], [b]</code> Şube / Uygulama Eşleşmeleri:</strong> Belirli teorik grupları alan öğrencilerin seçebileceği özel uygulama/laboratuvar saatleridir (Örn: Teknik Resim E grubu veya Tahribatsız Muayene şubeleri).
+                </li>
+              </ul>
+              <p class="help-text">
+                <em>Varsayılan olarak bu özel gruplar listeye dahil edilmez. Eğer bölümünüzde bu grupların açıldığından eminseniz veya bu şartları sağlıyorsanız Kriterler panelinden ilgili kutucuğu işaretleyebilirsiniz.</em>
+              </p>
+            </div>
+
+            <div class="help-section">
+              <h3 class="help-title">4. Öğle Arası Kuralı</h3>
+              <p class="help-text">
+                Ders programında devasa boşluklar oluşmasını engellemek amacıyla, öğle arası tam 12:00-13:00 saatine sabitlenmez. 11:30 ile 14:00 saatleri arasında en az 30 dakikalık (veya tercihinize göre 1 saatlik) kesintisiz bir yemek/dinlenme boşluğu kalması şart koşulur.
+              </p>
+            </div>
+
+            <div class="help-section">
+              <h3 class="help-title">5. Çıktı Alma Formatları</h3>
+              <p class="help-text">
+                Oluşturulan ders programını tek tıkla <strong>PNG Görseli</strong>, <strong>Excel (.xlsx)</strong> tablosu veya yazdırılabilir <strong>PDF</strong> formatında cihazınıza indirebilirsiniz.
+              </p>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
+
