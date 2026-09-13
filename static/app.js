@@ -1176,25 +1176,12 @@ function generateFromManualCourses() {
 
 // 9. Export Features (PNG, Excel, PDF)
 function exportScheduleImage() {
-async function exportScheduleImage() {
   const exportArea = document.getElementById('scheduleExportArea') || document.getElementById('timetableContainer');
-  if (!exportArea || typeof html2canvas === 'undefined') {
-    alert('Görsel çıktısı alınamadı.');
   if (!exportArea) {
     alert('Ders programı alanı bulunamadı.');
     return;
   }
 
-  html2canvas(exportArea, {
-    scale: 2,
-    backgroundColor: '#FFFFFF',
-    logging: false
-  }).then(canvas => {
-    const link = document.createElement('a');
-    link.download = `ESTU_Ders_Programi_${new Date().toISOString().slice(0, 10)}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-  }).catch(err => {
   if (typeof html2canvas === 'undefined') {
     alert('Görsel kütüphanesi yüklenemedi. Sayfayı yenileyip tekrar deneyiniz.');
     return;
@@ -1209,97 +1196,109 @@ async function exportScheduleImage() {
     pngBtn.innerText = 'Görsel Hazırlanıyor...';
   }
 
-  try {
-    const requiredWidth = Math.max(exportArea.scrollWidth, 1150);
+  const requiredWidth = Math.max(exportArea.scrollWidth, 1150);
 
-    const canvas = await html2canvas(exportArea, {
-      scale: 2,
-      backgroundColor: '#FFFFFF',
-      logging: false,
-      useCORS: true,
-      windowWidth: requiredWidth + 100,
-      onclone: (clonedDoc) => {
-        const clonedArea = clonedDoc.getElementById('scheduleExportArea');
-        if (clonedArea) {
-          clonedArea.style.width = requiredWidth + 'px';
-          clonedArea.style.maxWidth = 'none';
-          clonedArea.style.overflow = 'visible';
-          clonedArea.style.padding = '24px';
-          clonedArea.style.backgroundColor = '#FFFFFF';
-          clonedArea.style.boxSizing = 'border-box';
-        }
-        const clonedContainer = clonedDoc.getElementById('timetableContainer');
-        if (clonedContainer) {
-          clonedContainer.style.overflow = 'visible';
-          clonedContainer.style.width = '100%';
-        }
-        const clonedGrid = clonedDoc.getElementById('timetableGrid');
-        if (clonedGrid) {
-          clonedGrid.style.minWidth = '1050px';
-          clonedGrid.style.width = '100%';
-        }
-        const clonedDetails = clonedDoc.querySelector('.schedule-details-export .table-responsive');
-        if (clonedDetails) {
-          clonedDetails.style.overflow = 'visible';
-          clonedDetails.style.width = '100%';
-        }
+  html2canvas(exportArea, {
+    scale: 2,
+    backgroundColor: '#FFFFFF',
+    logging: false,
+    useCORS: true,
+    windowWidth: requiredWidth + 100,
+    onclone: (clonedDoc) => {
+      const clonedArea = clonedDoc.getElementById('scheduleExportArea');
+      if (clonedArea) {
+        clonedArea.style.width = requiredWidth + 'px';
+        clonedArea.style.maxWidth = 'none';
+        clonedArea.style.overflow = 'visible';
+        clonedArea.style.padding = '24px';
+        clonedArea.style.backgroundColor = '#FFFFFF';
+        clonedArea.style.boxSizing = 'border-box';
       }
-    });
-
+      const clonedContainer = clonedDoc.getElementById('timetableContainer');
+      if (clonedContainer) {
+        clonedContainer.style.overflow = 'visible';
+        clonedContainer.style.width = '100%';
+      }
+      const clonedGrid = clonedDoc.getElementById('timetableGrid');
+      if (clonedGrid) {
+        clonedGrid.style.minWidth = '1050px';
+        clonedGrid.style.width = '100%';
+      }
+      const clonedDetails = clonedDoc.querySelector('.schedule-details-export .table-responsive');
+      if (clonedDetails) {
+        clonedDetails.style.overflow = 'visible';
+        clonedDetails.style.width = '100%';
+      }
+    }
+  }).then((canvas) => {
     const fileName = `ESTU_Ders_Programi_${new Date().toISOString().slice(0, 10)}.png`;
 
-    canvas.toBlob(async (blob) => {
+    canvas.toBlob((blob) => {
       if (!blob) {
         alert('Görsel verisi oluşturulamadı.');
+        if (pngBtn) {
+          pngBtn.disabled = false;
+          pngBtn.innerHTML = originalText;
+        }
         return;
       }
 
-      let sharedSuccessfully = false;
       const isMobile = window.innerWidth < 768 || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
       if (isMobile && navigator.canShare) {
         try {
           const file = new File([blob], fileName, { type: 'image/png' });
           if (navigator.canShare({ files: [file] })) {
-            await navigator.share({
+            navigator.share({
               files: [file],
               title: 'ESTÜ Ders Programı',
               text: 'ESTÜ Ders Programı Çizelgesi'
+            }).then(() => {
+              if (pngBtn) {
+                pngBtn.disabled = false;
+                pngBtn.innerHTML = originalText;
+              }
+            }).catch((shareErr) => {
+              console.log('Web Share API iptal edildi veya desteklenmiyor:', shareErr);
+              triggerImageDownloadAndModal(blob, fileName, isMobile, pngBtn, originalText);
             });
-            sharedSuccessfully = true;
+            return;
           }
         } catch (shareErr) {
-          console.log('Web Share API iptal edildi veya desteklenmiyor:', shareErr);
+          console.log('Web Share API hatası:', shareErr);
         }
       }
 
-      if (!sharedSuccessfully) {
-        const blobUrl = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.download = fileName;
-        link.href = blobUrl;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        if (isMobile) {
-          showImagePreviewModal(blobUrl, fileName);
-        } else {
-          setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
-        }
-      }
+      triggerImageDownloadAndModal(blob, fileName, isMobile, pngBtn, originalText);
     }, 'image/png');
-
-  } catch (err) {
+  }).catch((err) => {
     console.error('PNG export error:', err);
-    alert('Görsel oluşturulurken bir hata oluştu.');
-  });
     alert('Görsel oluşturulurken bir hata oluştu: ' + (err.message || err));
-  } finally {
     if (pngBtn) {
       pngBtn.disabled = false;
       pngBtn.innerHTML = originalText;
     }
+  });
+}
+
+function triggerImageDownloadAndModal(blob, fileName, isMobile, pngBtn, originalText) {
+  const blobUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.download = fileName;
+  link.href = blobUrl;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  if (isMobile) {
+    showImagePreviewModal(blobUrl, fileName);
+  } else {
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
+  }
+
+  if (pngBtn) {
+    pngBtn.disabled = false;
+    pngBtn.innerHTML = originalText;
   }
 }
 
@@ -1335,17 +1334,10 @@ function exportScheduleExcel() {
   const sched = currentSchedules[currentScheduleIndex];
 
   if (typeof XLSX === 'undefined') {
-    alert('SheetJS kütüphanesi yüklenemedi.');
     alert('Excel kütüphanesi yüklenemedi. Sayfayı yenileyip tekrar deneyiniz.');
     return;
   }
 
-  // 1. Array-of-Arrays for unified main sheet (Timetable Grid + Course Details Table)
-  const aoa = [
-    ["Eskişehir Teknik Üniversitesi - Haftalık Ders Programı Çizelgesi"],
-    [`Toplam Kredi: ${sched.metrics.credits} AKTS | Verimlilik Puanı: ${sched.metrics.score} / 100 | Tarih: ${new Date().toLocaleDateString('tr-TR')}`],
-    [],
-    ["Saat", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma"]
   // Soft pastel color palette for courses
   const COURSE_PALETTES = [
     { bg: 'E0F2FE', border: '0284C7', text: '0369A1' }, // Sky Blue
@@ -1455,8 +1447,6 @@ function exportScheduleExcel() {
   };
 
   for (let h = 8; h <= 19; h++) {
-    const row = [`${h.toString().padStart(2, '0')}:00 - ${(h + 1).toString().padStart(2, '0')}:00`];
-    DAY_KEYS.forEach(day => {
     const r = 4 + (h - 8);
     const timeLabel = `${h.toString().padStart(2, '0')}:00 - ${(h + 1).toString().padStart(2, '0')}:00`;
     setCell(r, 0, timeLabel, timeColStyle);
@@ -1466,7 +1456,6 @@ function exportScheduleExcel() {
       const match = sched.groups.find(grp => {
         return (grp.time_slots || []).some(s => s.day === day && s.start <= h && s.end >= (h + 1));
       });
-      row.push(match ? `${match.code} (${match.group}) [${match.classroom || '-'}]` : '');
 
       if (match) {
         const p = courseColorMap[match.code] || COURSE_PALETTES[0];
@@ -1487,21 +1476,16 @@ function exportScheduleExcel() {
         setCell(r, c, "", emptySlotStyle);
       }
     });
-    aoa.push(row);
 
     rowHeights.push({ hpt: 48 });
   }
 
-  aoa.push([]);
-  aoa.push(["Programda Yer Alan Gruplar ve Derslikler"]);
-  aoa.push(["Ders Kodu", "Ders Adı", "Grup", "Gün ve Saatler", "Derslik", "Öğretim Elemanı", "Kredi (AKTS)"]);
   // Row 16: Spacer
   for (let c = 0; c <= 6; c++) {
     setCell(16, c, "", {});
   }
   rowHeights.push({ hpt: 12 });
 
-  sched.groups.forEach(g => {
   // Row 17: Details Title
   const detailsTitleStyle = {
     font: { name: 'Segoe UI', sz: 10.5, bold: true, color: { rgb: 'FFFFFF' } },
@@ -1545,15 +1529,6 @@ function exportScheduleExcel() {
     };
 
     const timeSlotsStr = (g.time_slots || []).map(s => `${DAY_NAMES[s.day] || s.day} ${s.display}`).join(', ');
-    aoa.push([
-      g.code,
-      g.name,
-      g.group,
-      timeSlotsStr,
-      g.classroom || '-',
-      g.instructor || '-',
-      g.credits
-    ]);
 
     setCell(r, 0, g.code, { font: { name: 'Segoe UI', sz: 9, bold: true, color: { rgb: '111827' } }, fill: { fgColor: { rgb: bg } }, alignment: { horizontal: 'center', vertical: 'center' }, border });
     setCell(r, 1, g.name, { font: { name: 'Segoe UI', sz: 9, color: { rgb: '111827' } }, fill: { fgColor: { rgb: bg } }, alignment: { horizontal: 'left', vertical: 'center' }, border });
@@ -1566,16 +1541,11 @@ function exportScheduleExcel() {
     rowHeights.push({ hpt: 22 });
   });
 
-  const wb = XLSX.utils.book_new();
-  const wsMain = XLSX.utils.aoa_to_sheet(aoa);
-
-  // Auto-column widths for main sheet
   const totalRows = 19 + sched.groups.length;
   wsMain['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: totalRows - 1, c: 6 } });
   wsMain['!merges'] = merges;
   wsMain['!rows'] = rowHeights;
   wsMain['!cols'] = [
-    { wch: 18 }, { wch: 26 }, { wch: 26 }, { wch: 26 }, { wch: 26 }, { wch: 26 }, { wch: 14 }
     { wch: 17 }, // Saat / Ders Kodu
     { wch: 28 }, // Pazartesi / Ders Adı
     { wch: 28 }, // Salı / Grup
@@ -1588,18 +1558,6 @@ function exportScheduleExcel() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, wsMain, "Ders Programı");
 
-  // Secondary standalone sheet for raw data
-  const courseRows = sched.groups.map(g => ({
-    'Ders Kodu': g.code,
-    'Ders Adı': g.name,
-    'Grup': g.group,
-    'Türü': g.type,
-    'Kredi (AKTS)': g.credits,
-    'Derslik': g.classroom,
-    'Öğretim Elemanı': g.instructor,
-    'Saatler': (g.time_slots || []).map(s => `${DAY_NAMES[s.day] || s.day} ${s.display}`).join(', ')
-  }));
-  const wsList = XLSX.utils.json_to_sheet(courseRows);
   // Sheet 2: Standalone Course List
   const wsList = {};
   const listHeaders = ["Ders Kodu", "Ders Adı", "Grup", "Türü", "Kredi (AKTS)", "Derslik", "Öğretim Elemanı", "Saatler"];
