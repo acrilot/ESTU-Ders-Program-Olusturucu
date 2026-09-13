@@ -1082,8 +1082,111 @@ body {
   padding: 4px;
 }
 
+/* Modal (Görsel Önizleme ve İndirme) */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  backdrop-filter: blur(3px);
+}
+
+.modal-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  width: 100%;
+  max-width: 860px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.modal-close:hover {
+  color: var(--text-main);
+  background-color: var(--bg-hover);
+}
+
+.modal-body {
+  padding: 14px 18px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-instruction {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+.modal-img-wrapper {
+  background: #FFFFFF;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 8px;
+  max-height: 58vh;
+  overflow: auto;
+  text-align: center;
+}
+
+.modal-img-wrapper img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border-color);
+  background-color: var(--bg-body);
+}
+
 /* Print styles for Clean PDF export */
+@page {
+  size: A4 landscape;
+  margin: 5mm 7mm;
+}
+
 @media print {
+  /* Hide non-printable UI controls */
   .sidebar,
   .top-bar,
   .tabs,
@@ -1091,65 +1194,261 @@ body {
   .schedule-nav,
   .export-bar,
   .btn,
-  #view-generator > .card:not(#resultsCard) {
+  .modal-backdrop,
+  .sidebar-backdrop,
+  #view-generator > .card:not(#resultsCard),
+  #view-manual,
+  #view-courses,
+  #view-criteria,
+  #view-help {
     display: none !important;
   }
 
-  body, .app-container, .main-wrapper, .content-area {
-    background: #FFFFFF !important;
-    color: #000000 !important;
-    padding: 0 !important;
+  html, body {
+    width: 100% !important;
+    height: auto !important;
     margin: 0 !important;
+    padding: 0 !important;
+    background: #FFFFFF !important;
+    color: #111827 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  .card {
+  .app-container,
+  .main-wrapper,
+  .content-area,
+  .view-section,
+  .card,
+  .schedule-export-area {
+    margin: 0 !important;
+    padding: 0 !important;
     border: none !important;
     box-shadow: none !important;
-    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
     background: transparent !important;
-  }
-
-  .schedule-export-area {
-    background: #FFFFFF !important;
-    padding: 0 !important;
-  }
-
-  .timetable-table {
-    border: 2px solid #000000 !important;
-    page-break-inside: avoid;
-  }
-
-  .timetable-table th, .timetable-table td {
-    border: 1px solid #333333 !important;
-    color: #000000 !important;
-  }
-
-  .course-box {
-    background-color: #F3F4F6 !important;
-    border-left: 4px solid #1E3A8A !important;
-    color: #000000 !important;
   }
 
   .print-header {
     display: block !important;
-    margin-bottom: 20px;
-    text-align: center;
+    text-align: center !important;
+    margin-bottom: 6px !important;
+    padding: 0 !important;
+  }
+
+  .print-header h2 {
+    font-size: 13.5px !important;
+    font-weight: 800 !important;
+    color: #911F10 !important;
+    margin: 0 0 2px 0 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .print-header h3 {
+    font-size: 11.5px !important;
+    font-weight: 700 !important;
+    color: #1F2937 !important;
+    margin: 0 0 2px 0 !important;
+  }
+
+  .print-header p {
+    font-size: 9px !important;
+    color: #4B5563 !important;
+    margin: 0 !important;
+  }
+
+  /* Timetable Container & Table (Page 1 Landscape Fit) */
+  .timetable-container {
+    overflow: visible !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+
+  .timetable-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+    border: 1.5px solid #374151 !important;
+  }
+
+  .timetable-table th,
+  .timetable-table td {
+    border: 1px solid #9CA3AF !important;
+  }
+
+  .timetable-table th {
+    background-color: #F3F4F6 !important;
+    color: #111827 !important;
+    padding: 3px 2px !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    height: 22px !important;
+  }
+
+  .timetable-table th.time-col {
+    width: 10% !important;
+  }
+
+  .timetable-table th:not(.time-col) {
+    width: 18% !important;
+  }
+
+  .timetable-table td.time-label {
+    width: 10% !important;
+    background-color: #F9FAFB !important;
+    font-size: 8.5px !important;
+    font-weight: 600 !important;
+    color: #374151 !important;
+    padding: 1px 2px !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+    line-height: 1.1 !important;
+  }
+
+  .timetable-table td.slot-cell {
+    width: 18% !important;
+    height: 31px !important;
+    max-height: 33px !important;
+    padding: 1px !important;
+    vertical-align: top !important;
+  }
+
+  .course-box {
+    min-height: 0 !important;
+    height: calc(100% - 2px) !important;
+    padding: 2px 3px !important;
+    border-radius: 2px !important;
+    background-color: #EFF6FF !important;
+    border: 1px solid #BFDBFE !important;
+    border-left: 3.5px solid #1E40AF !important;
+    gap: 1px !important;
+    box-sizing: border-box !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
+  }
+
+  .course-box-top {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 2px !important;
+    line-height: 1 !important;
+  }
+
+  .course-box-title {
+    font-size: 9px !important;
+    font-weight: 800 !important;
+    color: #1E3A8A !important;
+    line-height: 1.1 !important;
+  }
+
+  .course-box-badge {
+    font-size: 7.5px !important;
+    font-weight: 700 !important;
+    padding: 0 3px !important;
+    background-color: #FFFFFF !important;
+    border: 1px solid #93C5FD !important;
+    color: #1E40AF !important;
+    line-height: 1.2 !important;
+  }
+
+  .course-box-name {
+    font-size: 8px !important;
+    font-weight: 600 !important;
+    color: #111827 !important;
+    line-height: 1.1 !important;
+    margin-top: 1px !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+  }
+
+  .course-box-details {
+    font-size: 7.5px !important;
+    color: #374151 !important;
+    line-height: 1.1 !important;
+    margin-top: 1px !important;
+    padding-top: 1px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
+
+  .course-box-time {
+    font-size: 7.5px !important;
+    font-weight: 700 !important;
+    color: #1E40AF !important;
+    line-height: 1 !important;
+    margin-top: 1px !important;
+  }
+
+  /* Schedule Details Table: Page 2 */
+  .schedule-details-export {
+    margin-top: 0 !important;
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+
+  .schedule-details-export h4 {
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    color: #911F10 !important;
+    margin-bottom: 6px !important;
+    padding-bottom: 3px !important;
+    border-bottom: 1.5px solid #911F10 !important;
+  }
+
+  .schedule-details-export .table-responsive {
+    overflow: visible !important;
   }
 
   #scheduleCoursesListTable {
     width: 100% !important;
     border-collapse: collapse !important;
-    margin-top: 16px !important;
-    page-break-before: auto;
+    table-layout: fixed !important;
+    border: 1.5px solid #374151 !important;
   }
 
-  #scheduleCoursesListTable th,
-  #scheduleCoursesListTable td {
-    border: 1px solid #333333 !important;
-    color: #000000 !important;
-    padding: 6px 8px !important;
-    font-size: 11px !important;
+  #scheduleCoursesListTable th {
+    background-color: #911F10 !important;
+    color: #FFFFFF !important;
+    font-size: 9px !important;
+    font-weight: 700 !important;
+    padding: 5px 4px !important;
+    border: 1px solid #7F1D1D !important;
+    text-align: left !important;
   }
+
+  #scheduleCoursesListTable td {
+    font-size: 8.5px !important;
+    color: #1F2937 !important;
+    padding: 4px 4px !important;
+    border: 1px solid #D1D5DB !important;
+    line-height: 1.2 !important;
+  }
+
+  #scheduleCoursesListTable tbody tr:nth-child(even) {
+    background-color: #F9FAFB !important;
+  }
+
+  #scheduleCoursesListTable th:nth-child(1), #scheduleCoursesListTable td:nth-child(1) { width: 12% !important; }
+  #scheduleCoursesListTable th:nth-child(2), #scheduleCoursesListTable td:nth-child(2) { width: 26% !important; }
+  #scheduleCoursesListTable th:nth-child(3), #scheduleCoursesListTable td:nth-child(3) { width: 8% !important; }
+  #scheduleCoursesListTable th:nth-child(4), #scheduleCoursesListTable td:nth-child(4) { width: 20% !important; }
+  #scheduleCoursesListTable th:nth-child(5), #scheduleCoursesListTable td:nth-child(5) { width: 12% !important; }
+  #scheduleCoursesListTable th:nth-child(6), #scheduleCoursesListTable td:nth-child(6) { width: 15% !important; }
+  #scheduleCoursesListTable th:nth-child(7), #scheduleCoursesListTable td:nth-child(7) { width: 7% !important; }
 }
 
 .print-header {

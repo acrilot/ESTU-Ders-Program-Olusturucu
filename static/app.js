@@ -1176,9 +1176,12 @@ function generateFromManualCourses() {
 
 // 9. Export Features (PNG, Excel, PDF)
 function exportScheduleImage() {
+async function exportScheduleImage() {
   const exportArea = document.getElementById('scheduleExportArea') || document.getElementById('timetableContainer');
   if (!exportArea || typeof html2canvas === 'undefined') {
     alert('Görsel çıktısı alınamadı.');
+  if (!exportArea) {
+    alert('Ders programı alanı bulunamadı.');
     return;
   }
 
@@ -1192,10 +1195,140 @@ function exportScheduleImage() {
     link.href = canvas.toDataURL('image/png');
     link.click();
   }).catch(err => {
+  if (typeof html2canvas === 'undefined') {
+    alert('Görsel kütüphanesi yüklenemedi. Sayfayı yenileyip tekrar deneyiniz.');
+    return;
+  }
+
+  // Find the button and show a loading feedback
+  const exportBtns = document.querySelectorAll('.export-bar .btn');
+  const pngBtn = exportBtns[0];
+  const originalText = pngBtn ? pngBtn.innerHTML : '';
+  if (pngBtn) {
+    pngBtn.disabled = true;
+    pngBtn.innerText = 'Görsel Hazırlanıyor...';
+  }
+
+  try {
+    const requiredWidth = Math.max(exportArea.scrollWidth, 1150);
+
+    const canvas = await html2canvas(exportArea, {
+      scale: 2,
+      backgroundColor: '#FFFFFF',
+      logging: false,
+      useCORS: true,
+      windowWidth: requiredWidth + 100,
+      onclone: (clonedDoc) => {
+        const clonedArea = clonedDoc.getElementById('scheduleExportArea');
+        if (clonedArea) {
+          clonedArea.style.width = requiredWidth + 'px';
+          clonedArea.style.maxWidth = 'none';
+          clonedArea.style.overflow = 'visible';
+          clonedArea.style.padding = '24px';
+          clonedArea.style.backgroundColor = '#FFFFFF';
+          clonedArea.style.boxSizing = 'border-box';
+        }
+        const clonedContainer = clonedDoc.getElementById('timetableContainer');
+        if (clonedContainer) {
+          clonedContainer.style.overflow = 'visible';
+          clonedContainer.style.width = '100%';
+        }
+        const clonedGrid = clonedDoc.getElementById('timetableGrid');
+        if (clonedGrid) {
+          clonedGrid.style.minWidth = '1050px';
+          clonedGrid.style.width = '100%';
+        }
+        const clonedDetails = clonedDoc.querySelector('.schedule-details-export .table-responsive');
+        if (clonedDetails) {
+          clonedDetails.style.overflow = 'visible';
+          clonedDetails.style.width = '100%';
+        }
+      }
+    });
+
+    const fileName = `ESTU_Ders_Programi_${new Date().toISOString().slice(0, 10)}.png`;
+
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        alert('Görsel verisi oluşturulamadı.');
+        return;
+      }
+
+      let sharedSuccessfully = false;
+      const isMobile = window.innerWidth < 768 || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+      if (isMobile && navigator.canShare) {
+        try {
+          const file = new File([blob], fileName, { type: 'image/png' });
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: 'ESTÜ Ders Programı',
+              text: 'ESTÜ Ders Programı Çizelgesi'
+            });
+            sharedSuccessfully = true;
+          }
+        } catch (shareErr) {
+          console.log('Web Share API iptal edildi veya desteklenmiyor:', shareErr);
+        }
+      }
+
+      if (!sharedSuccessfully) {
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = fileName;
+        link.href = blobUrl;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        if (isMobile) {
+          showImagePreviewModal(blobUrl, fileName);
+        } else {
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
+        }
+      }
+    }, 'image/png');
+
+  } catch (err) {
     console.error('PNG export error:', err);
     alert('Görsel oluşturulurken bir hata oluştu.');
   });
+    alert('Görsel oluşturulurken bir hata oluştu: ' + (err.message || err));
+  } finally {
+    if (pngBtn) {
+      pngBtn.disabled = false;
+      pngBtn.innerHTML = originalText;
+    }
+  }
 }
+
+function showImagePreviewModal(imgUrl, fileName) {
+  const modal = document.getElementById('imagePreviewModal');
+  const img = document.getElementById('imagePreviewImg');
+  const downloadBtn = document.getElementById('imageDownloadBtn');
+  if (modal && img) {
+    img.src = imgUrl;
+    if (downloadBtn) {
+      downloadBtn.href = imgUrl;
+      downloadBtn.download = fileName;
+    }
+    modal.style.display = 'flex';
+  }
+}
+
+function closeImagePreviewModal() {
+  const modal = document.getElementById('imagePreviewModal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeImagePreviewModal();
+  }
+});
 
 function exportScheduleExcel() {
   if (currentSchedules.length === 0) return;
@@ -1203,6 +1336,7 @@ function exportScheduleExcel() {
 
   if (typeof XLSX === 'undefined') {
     alert('SheetJS kütüphanesi yüklenemedi.');
+    alert('Excel kütüphanesi yüklenemedi. Sayfayı yenileyip tekrar deneyiniz.');
     return;
   }
 
@@ -1212,24 +1346,204 @@ function exportScheduleExcel() {
     [`Toplam Kredi: ${sched.metrics.credits} AKTS | Verimlilik Puanı: ${sched.metrics.score} / 100 | Tarih: ${new Date().toLocaleDateString('tr-TR')}`],
     [],
     ["Saat", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma"]
+  // Soft pastel color palette for courses
+  const COURSE_PALETTES = [
+    { bg: 'E0F2FE', border: '0284C7', text: '0369A1' }, // Sky Blue
+    { bg: 'DCFCE7', border: '16A34A', text: '15803D' }, // Emerald
+    { bg: 'FEF3C7', border: 'D97706', text: 'B45309' }, // Amber
+    { bg: 'F3E8FF', border: '9333EA', text: '7E22CE' }, // Purple
+    { bg: 'FFE4E6', border: 'E11D48', text: 'BE123C' }, // Rose
+    { bg: 'E0E7FF', border: '4F46E5', text: '4338CA' }, // Indigo
+    { bg: 'FFEDD5', border: 'EA580C', text: 'C2410C' }, // Orange
+    { bg: 'CCFBF1', border: '0D9488', text: '0F766E' }, // Teal
+    { bg: 'FCE7F3', border: 'DB2777', text: 'BE185D' }, // Pink
+    { bg: 'F1F5F9', border: '475569', text: '334155' }  // Slate
   ];
+
+  const courseColorMap = {};
+  sched.groups.forEach((g) => {
+    if (!courseColorMap[g.code]) {
+      const pIdx = Object.keys(courseColorMap).length % COURSE_PALETTES.length;
+      courseColorMap[g.code] = COURSE_PALETTES[pIdx];
+    }
+  });
+
+  // Build cell data map for Sheet 1 (Ders Programı)
+  const wsMain = {};
+  const merges = [];
+  const rowHeights = [];
+
+  // Helper to set cell with style
+  function setCell(r, c, val, style) {
+    const ref = XLSX.utils.encode_cell({ r, c });
+    wsMain[ref] = { t: typeof val === 'number' ? 'n' : 's', v: val, s: style };
+  }
+
+  // Row 0: Title Banner
+  const titleStyle = {
+    font: { name: 'Segoe UI', sz: 13, bold: true, color: { rgb: 'FFFFFF' } },
+    fill: { fgColor: { rgb: '911F10' } },
+    alignment: { horizontal: 'center', vertical: 'center' }
+  };
+  for (let c = 0; c <= 5; c++) {
+    setCell(0, c, c === 0 ? "ESKİŞEHİR TEKNİK ÜNİVERSİTESİ - HAFTALIK DERS PROGRAMI" : "", titleStyle);
+  }
+  merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 5 } });
+  rowHeights.push({ hpt: 32 });
+
+  // Row 1: Subtitle Info
+  const subtitleText = `Toplam Kredi: ${sched.metrics.credits} AKTS   |   Verimlilik Puanı: ${sched.metrics.score} / 100   |   Tarih: ${new Date().toLocaleDateString('tr-TR')}`;
+  const subtitleStyle = {
+    font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: '7F1D1D' } },
+    fill: { fgColor: { rgb: 'FDF2F2' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: {
+      bottom: { style: 'thin', color: { rgb: 'FCA5A5' } }
+    }
+  };
+  for (let c = 0; c <= 5; c++) {
+    setCell(1, c, c === 0 ? subtitleText : "", subtitleStyle);
+  }
+  merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 5 } });
+  rowHeights.push({ hpt: 20 });
+
+  // Row 2: Spacer
+  for (let c = 0; c <= 5; c++) {
+    setCell(2, c, "", {});
+  }
+  rowHeights.push({ hpt: 8 });
+
+  // Row 3: Timetable Column Headers
+  const ttHeaders = ["Saat / Gün", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma"];
+  const headerStyle = {
+    font: { name: 'Segoe UI', sz: 10.5, bold: true, color: { rgb: 'FFFFFF' } },
+    fill: { fgColor: { rgb: '7A1A0D' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: {
+      top: { style: 'thin', color: { rgb: '551109' } },
+      bottom: { style: 'medium', color: { rgb: '551109' } },
+      left: { style: 'thin', color: { rgb: '991B1B' } },
+      right: { style: 'thin', color: { rgb: '991B1B' } }
+    }
+  };
+  ttHeaders.forEach((th, c) => {
+    setCell(3, c, th, headerStyle);
+  });
+  rowHeights.push({ hpt: 26 });
+
+  // Rows 4 to 15: Hours 8 to 19
+  const timeColStyle = {
+    font: { name: 'Segoe UI', sz: 9, bold: true, color: { rgb: '374151' } },
+    fill: { fgColor: { rgb: 'F3F4F6' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: {
+      top: { style: 'thin', color: { rgb: 'D1D5DB' } },
+      bottom: { style: 'thin', color: { rgb: 'D1D5DB' } },
+      left: { style: 'thin', color: { rgb: 'D1D5DB' } },
+      right: { style: 'thin', color: { rgb: 'D1D5DB' } }
+    }
+  };
+
+  const emptySlotStyle = {
+    fill: { fgColor: { rgb: 'FFFFFF' } },
+    border: {
+      top: { style: 'thin', color: { rgb: 'E5E7EB' } },
+      bottom: { style: 'thin', color: { rgb: 'E5E7EB' } },
+      left: { style: 'thin', color: { rgb: 'E5E7EB' } },
+      right: { style: 'thin', color: { rgb: 'E5E7EB' } }
+    }
+  };
 
   for (let h = 8; h <= 19; h++) {
     const row = [`${h.toString().padStart(2, '0')}:00 - ${(h + 1).toString().padStart(2, '0')}:00`];
     DAY_KEYS.forEach(day => {
+    const r = 4 + (h - 8);
+    const timeLabel = `${h.toString().padStart(2, '0')}:00 - ${(h + 1).toString().padStart(2, '0')}:00`;
+    setCell(r, 0, timeLabel, timeColStyle);
+
+    DAY_KEYS.forEach((day, dayIdx) => {
+      const c = dayIdx + 1;
       const match = sched.groups.find(grp => {
         return (grp.time_slots || []).some(s => s.day === day && s.start <= h && s.end >= (h + 1));
       });
       row.push(match ? `${match.code} (${match.group}) [${match.classroom || '-'}]` : '');
+
+      if (match) {
+        const p = courseColorMap[match.code] || COURSE_PALETTES[0];
+        const cellText = `${match.code} (${match.group})\n${match.name}\n${match.classroom ? 'Derslik: ' + match.classroom : '-'}${match.instructor ? ' | ' + match.instructor : ''}`;
+        const courseStyle = {
+          font: { name: 'Segoe UI', sz: 8.5, bold: false, color: { rgb: p.text } },
+          fill: { fgColor: { rgb: p.bg } },
+          alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+          border: {
+            top: { style: 'thin', color: { rgb: p.border } },
+            bottom: { style: 'thin', color: { rgb: p.border } },
+            left: { style: 'medium', color: { rgb: p.border } },
+            right: { style: 'thin', color: { rgb: p.border } }
+          }
+        };
+        setCell(r, c, cellText, courseStyle);
+      } else {
+        setCell(r, c, "", emptySlotStyle);
+      }
     });
     aoa.push(row);
+
+    rowHeights.push({ hpt: 48 });
   }
 
   aoa.push([]);
   aoa.push(["Programda Yer Alan Gruplar ve Derslikler"]);
   aoa.push(["Ders Kodu", "Ders Adı", "Grup", "Gün ve Saatler", "Derslik", "Öğretim Elemanı", "Kredi (AKTS)"]);
+  // Row 16: Spacer
+  for (let c = 0; c <= 6; c++) {
+    setCell(16, c, "", {});
+  }
+  rowHeights.push({ hpt: 12 });
 
   sched.groups.forEach(g => {
+  // Row 17: Details Title
+  const detailsTitleStyle = {
+    font: { name: 'Segoe UI', sz: 10.5, bold: true, color: { rgb: 'FFFFFF' } },
+    fill: { fgColor: { rgb: '911F10' } },
+    alignment: { horizontal: 'left', vertical: 'center' }
+  };
+  for (let c = 0; c <= 6; c++) {
+    setCell(17, c, c === 0 ? " PROGRAMDA YER ALAN GRUPLAR VE DERSLİKLER" : "", detailsTitleStyle);
+  }
+  merges.push({ s: { r: 17, c: 0 }, e: { r: 17, c: 6 } });
+  rowHeights.push({ hpt: 24 });
+
+  // Row 18: Details Headers
+  const dtHeaders = ["Ders Kodu", "Ders Adı", "Grup", "Gün ve Saatler", "Derslik", "Öğretim Elemanı", "Kredi (AKTS)"];
+  const detailsHeaderStyle = {
+    font: { name: 'Segoe UI', sz: 9.5, bold: true, color: { rgb: 'FFFFFF' } },
+    fill: { fgColor: { rgb: '7A1A0D' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: {
+      top: { style: 'thin', color: { rgb: '551109' } },
+      bottom: { style: 'medium', color: { rgb: '551109' } },
+      left: { style: 'thin', color: { rgb: '991B1B' } },
+      right: { style: 'thin', color: { rgb: '991B1B' } }
+    }
+  };
+  dtHeaders.forEach((dh, c) => {
+    setCell(18, c, dh, detailsHeaderStyle);
+  });
+  rowHeights.push({ hpt: 22 });
+
+  // Rows 19+: Details rows
+  sched.groups.forEach((g, gIdx) => {
+    const r = 19 + gIdx;
+    const isEven = gIdx % 2 === 0;
+    const bg = isEven ? 'FFFFFF' : 'F9FAFB';
+    const border = {
+      top: { style: 'thin', color: { rgb: 'D1D5DB' } },
+      bottom: { style: 'thin', color: { rgb: 'D1D5DB' } },
+      left: { style: 'thin', color: { rgb: 'D1D5DB' } },
+      right: { style: 'thin', color: { rgb: 'D1D5DB' } }
+    };
+
     const timeSlotsStr = (g.time_slots || []).map(s => `${DAY_NAMES[s.day] || s.day} ${s.display}`).join(', ');
     aoa.push([
       g.code,
@@ -1240,16 +1554,38 @@ function exportScheduleExcel() {
       g.instructor || '-',
       g.credits
     ]);
+
+    setCell(r, 0, g.code, { font: { name: 'Segoe UI', sz: 9, bold: true, color: { rgb: '111827' } }, fill: { fgColor: { rgb: bg } }, alignment: { horizontal: 'center', vertical: 'center' }, border });
+    setCell(r, 1, g.name, { font: { name: 'Segoe UI', sz: 9, color: { rgb: '111827' } }, fill: { fgColor: { rgb: bg } }, alignment: { horizontal: 'left', vertical: 'center' }, border });
+    setCell(r, 2, g.group, { font: { name: 'Segoe UI', sz: 9, bold: true, color: { rgb: '111827' } }, fill: { fgColor: { rgb: bg } }, alignment: { horizontal: 'center', vertical: 'center' }, border });
+    setCell(r, 3, timeSlotsStr, { font: { name: 'Segoe UI', sz: 8.5, color: { rgb: '374151' } }, fill: { fgColor: { rgb: bg } }, alignment: { horizontal: 'left', vertical: 'center' }, border });
+    setCell(r, 4, g.classroom || '-', { font: { name: 'Segoe UI', sz: 9, color: { rgb: '374151' } }, fill: { fgColor: { rgb: bg } }, alignment: { horizontal: 'center', vertical: 'center' }, border });
+    setCell(r, 5, g.instructor || '-', { font: { name: 'Segoe UI', sz: 8.5, color: { rgb: '374151' } }, fill: { fgColor: { rgb: bg } }, alignment: { horizontal: 'left', vertical: 'center' }, border });
+    setCell(r, 6, g.credits, { font: { name: 'Segoe UI', sz: 9, bold: true, color: { rgb: '111827' } }, fill: { fgColor: { rgb: bg } }, alignment: { horizontal: 'center', vertical: 'center' }, border });
+
+    rowHeights.push({ hpt: 22 });
   });
 
   const wb = XLSX.utils.book_new();
   const wsMain = XLSX.utils.aoa_to_sheet(aoa);
 
   // Auto-column widths for main sheet
+  const totalRows = 19 + sched.groups.length;
+  wsMain['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: totalRows - 1, c: 6 } });
+  wsMain['!merges'] = merges;
+  wsMain['!rows'] = rowHeights;
   wsMain['!cols'] = [
     { wch: 18 }, { wch: 26 }, { wch: 26 }, { wch: 26 }, { wch: 26 }, { wch: 26 }, { wch: 14 }
+    { wch: 17 }, // Saat / Ders Kodu
+    { wch: 28 }, // Pazartesi / Ders Adı
+    { wch: 28 }, // Salı / Grup
+    { wch: 28 }, // Çarşamba / Gün ve Saatler
+    { wch: 28 }, // Perşembe / Derslik
+    { wch: 28 }, // Cuma / Öğretim Elemanı
+    { wch: 14 }  // Kredi
   ];
 
+  const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, wsMain, "Ders Programı");
 
   // Secondary standalone sheet for raw data
@@ -1264,11 +1600,79 @@ function exportScheduleExcel() {
     'Saatler': (g.time_slots || []).map(s => `${DAY_NAMES[s.day] || s.day} ${s.display}`).join(', ')
   }));
   const wsList = XLSX.utils.json_to_sheet(courseRows);
+  // Sheet 2: Standalone Course List
+  const wsList = {};
+  const listHeaders = ["Ders Kodu", "Ders Adı", "Grup", "Türü", "Kredi (AKTS)", "Derslik", "Öğretim Elemanı", "Saatler"];
+  const listHeaderStyle = {
+    font: { name: 'Segoe UI', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
+    fill: { fgColor: { rgb: '911F10' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: {
+      top: { style: 'thin', color: { rgb: '7F1D1D' } },
+      bottom: { style: 'medium', color: { rgb: '7F1D1D' } },
+      left: { style: 'thin', color: { rgb: '7F1D1D' } },
+      right: { style: 'thin', color: { rgb: '7F1D1D' } }
+    }
+  };
+
+  listHeaders.forEach((lh, c) => {
+    const ref = XLSX.utils.encode_cell({ r: 0, c });
+    wsList[ref] = { t: 's', v: lh, s: listHeaderStyle };
+  });
+
+  const listRowHeights = [{ hpt: 24 }];
+  sched.groups.forEach((g, gIdx) => {
+    const r = gIdx + 1;
+    const isEven = gIdx % 2 === 0;
+    const bg = isEven ? 'FFFFFF' : 'F9FAFB';
+    const border = {
+      top: { style: 'thin', color: { rgb: 'E5E7EB' } },
+      bottom: { style: 'thin', color: { rgb: 'E5E7EB' } },
+      left: { style: 'thin', color: { rgb: 'E5E7EB' } },
+      right: { style: 'thin', color: { rgb: 'E5E7EB' } }
+    };
+    const timeSlotsStr = (g.time_slots || []).map(s => `${DAY_NAMES[s.day] || s.day} ${s.display}`).join(', ');
+
+    const rowData = [
+      { v: g.code, bold: true, align: 'center' },
+      { v: g.name, bold: false, align: 'left' },
+      { v: g.group, bold: true, align: 'center' },
+      { v: g.type, bold: false, align: 'center' },
+      { v: g.credits, bold: true, align: 'center' },
+      { v: g.classroom || '-', bold: false, align: 'center' },
+      { v: g.instructor || '-', bold: false, align: 'left' },
+      { v: timeSlotsStr, bold: false, align: 'left' }
+    ];
+
+    rowData.forEach((item, c) => {
+      const ref = XLSX.utils.encode_cell({ r, c });
+      wsList[ref] = {
+        t: typeof item.v === 'number' ? 'n' : 's',
+        v: item.v,
+        s: {
+          font: { name: 'Segoe UI', sz: 9, bold: item.bold, color: { rgb: '111827' } },
+          fill: { fgColor: { rgb: bg } },
+          alignment: { horizontal: item.align, vertical: 'center' },
+          border
+        }
+      };
+    });
+
+    listRowHeights.push({ hpt: 20 });
+  });
+
+  wsList['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: sched.groups.length, c: 7 } });
+  wsList['!rows'] = listRowHeights;
+  wsList['!cols'] = [
+    { wch: 14 }, { wch: 32 }, { wch: 10 }, { wch: 12 }, { wch: 14 }, { wch: 16 }, { wch: 26 }, { wch: 30 }
+  ];
+
   XLSX.utils.book_append_sheet(wb, wsList, "Ders Listesi");
 
   XLSX.writeFile(wb, `ESTU_Ders_Programi_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
 function exportSchedulePDF() {
+  closeImagePreviewModal();
   window.print();
 }
